@@ -8,7 +8,7 @@ exception Empty
 type 'a node = {
   mutable prev : 'a node;
   mutable next : 'a node;
-  mutable node_data : 'a;
+  mutable node_data : 'a option;
   mutable node_active : bool;
 }
 
@@ -19,10 +19,10 @@ type 'a t = 'a node
    +-----------------------------------------------------------------+ *)
 
 let get node =
-  node.node_data
+  node.node_data |> Option.get
 
 let set node data =
-  node.node_data <- data
+  node.node_data <- Some data
 
 (*
 external seq_of_node : 'a node -> 'a t = "%identity"
@@ -44,7 +44,7 @@ let create () =
   let rec seq =
     { prev = seq
     ; next = seq
-    ; node_data = Obj.magic ()
+    ; node_data = None
     ; node_active = false } in
   seq
 
@@ -64,7 +64,7 @@ let add_l data seq =
   let node =
     { prev = seq
     ; next = seq.next
-    ; node_data = data
+    ; node_data = Some data
     ; node_active = true }
   in
   seq.next.prev <- node;
@@ -75,7 +75,7 @@ let add_r data seq =
   let node =
     { prev = seq.prev
     ; next = seq
-    ; node_data = data
+    ; node_data = Some data
     ; node_active = true
     }
   in
@@ -89,7 +89,7 @@ let take_l seq =
   else begin
     let node = seq.next in
     remove node;
-    node.node_data
+    node.node_data |> Option.get
   end
 
 let take_r seq =
@@ -98,7 +98,7 @@ let take_r seq =
   else begin
     let node = seq.prev in
     remove node;
-    node.node_data
+    node.node_data |> Option.get
   end
 
 let take_opt_l seq =
@@ -107,7 +107,7 @@ let take_opt_l seq =
   else begin
     let node = seq.next in
     remove node;
-    Some node.node_data
+    node.node_data
   end
 
 let take_opt_r seq =
@@ -116,7 +116,7 @@ let take_opt_r seq =
   else begin
     let node = seq.prev in
     remove node;
-    Some node.node_data
+    node.node_data
   end
 
 let transfer_l s1 s2 =
@@ -139,7 +139,7 @@ let iter_l f seq =
   let rec loop curr =
     if curr != seq then begin
       let node = curr in
-      if node.node_active then f node.node_data;
+      if node.node_active then f (Option.get node.node_data);
       loop node.next
     end
   in
@@ -149,7 +149,7 @@ let iter_r f seq =
   let rec loop curr =
     if curr != seq then begin
       let node = curr in
-      if node.node_active then f node.node_data;
+      if node.node_active then f (Option.get node.node_data);
       loop node.prev
     end
   in
@@ -182,7 +182,7 @@ let fold_l f seq acc =
     else
       let node = curr in
       if node.node_active then
-        loop node.next (f node.node_data acc)
+        loop node.next (f (Option.get node.node_data) acc)
       else
         loop node.next acc
   in
@@ -195,7 +195,7 @@ let fold_r f seq acc =
     else
       let node = curr in
       if node.node_active then
-        loop node.prev (f node.node_data acc)
+        loop node.prev (f (Option.get node.node_data) acc)
       else
         loop node.prev acc
   in
@@ -206,7 +206,7 @@ let find_node_l f seq =
     if curr != seq then
       let node = curr in
       if node.node_active then
-        if f node.node_data then
+        if f (Option.get node.node_data) then
           node
         else
           loop node.next
@@ -222,7 +222,7 @@ let find_node_r f seq =
     if curr != seq then
       let node = curr in
       if node.node_active then
-        if f node.node_data then
+        if f (Option.get node.node_data) then
           node
         else
           loop node.prev
